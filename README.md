@@ -29,39 +29,50 @@
 
 ## Objectif du projet
 
-> à remplir
+L'objectif du projet est de simuler un système de transactions bancaire et de pouvoir repérer y les fraudes.
 
 ## Organisation du dossier
 
 ```
-ti-compressed-sensing/
-├─ src/
-│  ├─ constants.py
-│  ├─ image_processing.py
-│  ├─ __init__.py
-├─ Data/
-│  ├─ 2007041608_cam01p.jpg
-|  ├─ ...
-├─ .gitignore
-├─ main.py
-├─ README.md
-├─ requirements.txt
-
+pfe-fraud-detection/ 
+├── data/
+├── docker/
+├── models/
+├── notebooks/
+├── src/
+│   ├── api/
+│   ├── dashboard/
+│   ├── processing/
+│   └── producer/
+├── docker-compose.yml
+├── README.md
+└── requirements.txt
 ```
+
+## Jeu de données
+
+Le jeu données utilisé nous provient de [Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud).
 
 ## Prérequis
 
 * Avoir installé Python 3.10 (+).
-* (Optionel) Avoir installé git. 
+* `git`. 
+* `docker`.
 
 ## Installation
 
 ### Git 
 
-Si le dossier du projet n'est pas déjà installé, vous pouvez le cloner depuis le dépôt [`🗃️ Github`](https://github.com/pberecoechea/ti-compressed-sensing.git). Pour cela, ouvrez un terminal, déplacez vous dans le dossier où vous souhaitez placer le projet et exécutez :
+Si le dossier du projet n'est pas déjà installé, vous pouvez le cloner depuis le dépôt [`🗃️ Github`](https://github.com/pberecoechea/pfe-fraud-detection.git). Pour cela, ouvrez un terminal, déplacez vous dans le dossier où vous souhaitez placer le projet et exécutez :
 
 ```bash
-git clone https://github.com/pberecoechea/ti-compressed-sensing.git
+git clone https://github.com/pberecoechea/pfe-fraud-detection.git
+```
+
+### Préparation des outils
+
+```bash
+docker compose up
 ```
 
 ### Préparation de l'environnement virtuel
