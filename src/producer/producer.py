@@ -13,7 +13,7 @@ import os
 
 # Paramètres
 TOPIC_NAME = 'transactions'
-KAFKA_SERVER = 'redpanda:9092'
+KAFKA_SERVER = 'redpanda:29092'
 CSV_PATH = os.path.join(os.path.dirname(__file__), '../../data/ccfraud_dataset1.csv')
 
 # Initialisation
