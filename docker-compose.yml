@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Le Broker (Le cœur du système)
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: redpanda
@@ -16,10 +15,9 @@ services:
       - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
       - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
     ports:
-      - "9092:9092"   # Pour ton script Python sur ton PC
-      - "29092:29092" # Pour la communication interne Docker
+      - "9092:9092"   # script python 
+      - "29092:29092" # communication interne Docker
 
-  # L'interface Console (Plus simple, plus de mapping d'erreurs)
   console:
     image: docker.redpanda.com/redpandadata/console:latest
     container_name: redpanda-console
@@ -30,21 +28,34 @@ services:
     depends_on:
       - redpanda
 
-  # Le cache pour plus tard
-  redis:
+  redis_cache:
     image: redis:7.2-alpine
     container_name: redis_cache
     ports:
       - "6379:6379"
 
-  # Ton moteur de calcul
-  spark-master:
-    image: apache/spark-py:latest
-    container_name: spark-master
-    #user: root
-    environment:
-      - SPARK_MODE=master
+  producer:
+    build:
+      context: .
+      dockerfile: src/producer/Dockerfile
+    depends_on:
+      - redpanda
+    volumes:
+      - ./data:/app/data
+
+  spark_processor:
+    build:
+      context: .
+      dockerfile: src/processing/Dockerfile
+    depends_on:
+      - redpanda
+      - redis_cache
+
+  fraud_api:
+    build:
+      context: .
+      dockerfile: src/api/Dockerfile
     ports:
-      - "8081:8080"
-      - "7077:7077"
-    command: ["/opt/spark/bin/spark-class","org.apache.spark.deploy.master.Master"]
+      - "8000:8000"
+    depends_on:
+      - redis_cache

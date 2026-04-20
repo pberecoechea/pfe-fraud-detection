@@ -7,64 +7,57 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType
+import json
+import redis
 
-schema = StructType([
-    StructField("Time", IntegerType()),
-    
-    # Pour le futur, composantes principales
-    ## 1-5
-    #StructField("V1", DoubleType()),
-    #StructField("V2", DoubleType()),
-    #StructField("V3", DoubleType()),
-    #StructField("V4", DoubleType()),
-    #StructField("V5", DoubleType()),
-
-    # 6-10
-    #StructField("V6", DoubleType()),
-    #StructField("V7", DoubleType()),
-    #StructField("V8", DoubleType()),
-    #StructField("V9", DoubleType()),
-    #StructField("V10", DoubleType()),
-
-    # 11-15
-    #StructField("V11", DoubleType()),
-    #StructField("V12", DoubleType()),
-    #StructField("V13", DoubleType()),
-    #StructField("V14", DoubleType()),
-    #StructField("V15", DoubleType()),
-
-    # 16-20
-    #StructField("V16", DoubleType()),
-    #StructField("V17", DoubleType()),
-    #StructField("V18", DoubleType()),
-    #StructField("V19", DoubleType()),
-    #StructField("V20", DoubleType()),
-
-    # 21-25
-    #StructField("V21", DoubleType()),
-    #StructField("V22", DoubleType()),
-    #StructField("V23", DoubleType()),
-    #StructField("V24", DoubleType()),
-    #StructField("V25", DoubleType()),
-
-    # 26-28
-    #StructField("V26", DoubleType()),
-    #StructField("V27", DoubleType()),
-    #StructField("V28", DoubleType()),
-    
-    StructField("Class", IntegerType()),
+fields = [
+    StructField("client_id", StringType()), # L'ID qu'on a injecté dans le producer
+    StructField("Time", DoubleType()),
     StructField("Amount", DoubleType()),
-])
+    StructField("Class", IntegerType())
+]
+
+# On ajoute les colonnes V1 à V28 dynamiquement
+for i in range(1, 29):
+    fields.append(StructField(f"V{i}", DoubleType()))
+
+schema = StructType(fields)
+
+def write_to_redis(df, batch_id):
+    r = redis.Redis(host='redis_cache', port=6379, db=0)
+    records = df.collect()
+    for row in records:
+        key = f"client:{row['client_id']}"
+        feature_data = {
+            "amount": row['Amount'],
+            "time": row['Time'],
+            "is_fraud_known": row['Class'],
+            "v1": row['V1'], # On peut en mettre quelques-unes pour l'exemple
+            "v2": row['V2']
+        }
+        r.set(key, json.dumps(feature_data))
+        
+    print(f":inbox_tray: Batch {batch_id} : {len(records)} clients mis à jour dans le Feature Store.")
 
 # Initialisation session spark
-spark = SparkSession.builder.appName("FraudDetectionProcessor").config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1").getOrCreate()
+spark = SparkSession.builder\
+    .appName("FraudDetectionProcessor")\
+    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1,com.redislabs:spark-redis_2.12:3.1.0")\
+    .config("spark.redis.host", "redis_cache")\
+    .config("spark.redis.port", "6379")\
+    .getOrCreate()
 
 spark.sparkContext.setLogLevel("ERROR")
 
-raw_df = spark.readStream .format("kafka").option("kafka.bootstrap.servers", "localhost:9092").option("subscribe", "transactions").option("startingOffsets", "latest").load()
+raw_df = spark.readStream.format("kafka").option("kafka.bootstrap.servers", "redpanda:29092").option("subscribe", "transactions").option("startingOffsets", "latest").load()
 
 # Transformation binaire kafka en colonnes lisibles
 transactions_df = raw_df.selectExpr("CAST(value AS STRING)").select(from_json(col("value"), schema).alias("data")).select("data.*")
+
+
+query = transactions_df.writeStream \
+    .foreachBatch(write_to_redis) \
+    .start()
 
 # high_value_df = transactions_df.filter(col("Amount") > 200000)
 query = transactions_df.writeStream.outputMode("append").format("console").start()
