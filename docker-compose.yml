@@ -42,12 +42,20 @@ services:
     depends_on:
       - redis_cache
 
+  machine_learning_model:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    volumes:
+      - ./data:/app/data
+
   producer:
     build:
       context: .
       dockerfile: producer/Dockerfile
     depends_on:
       - redpanda
+      - machine_learning_model
     volumes:
       - ./data:/app/data
 
