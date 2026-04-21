@@ -45,7 +45,7 @@ services:
   producer:
     build:
       context: .
-      dockerfile: src/producer/Dockerfile
+      dockerfile: producer/Dockerfile
     depends_on:
       - redpanda
     volumes:
@@ -54,16 +54,16 @@ services:
   spark_processor:
     build:
       context: .
-      dockerfile: src/processing/Dockerfile
+      dockerfile: processing/Dockerfile
     environment:
-      - KAFKA_BROKERS=repanda:29092
+      - KAFKA_BROKERS=redpanda:29092
     depends_on:
       - redpanda
 
   fraud_api:
     build:
       context: .
-      dockerfile: src/api/Dockerfile
+      dockerfile: api/Dockerfile
     ports:
       - "8000:8000"
     depends_on:
@@ -71,7 +71,7 @@ services:
 
   dashboard:
     build: 
-      context: ./src/dashboard
+      context: ./web
     container_name: dashboard_ui
     ports:
       - "8501:8501"
