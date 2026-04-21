@@ -32,6 +32,16 @@ services:
     ports:
       - "6379:6379"
 
+  redis_insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "8002:8001"
+    environment:
+      - RI_APP_PORT=8001
+    depends_on:
+      - redis_cache
+
   producer:
     build:
       context: .
@@ -58,3 +68,14 @@ services:
       - "8000:8000"
     depends_on:
       - redis_cache
+
+  dashboard:
+    build: 
+      context: ./src/dashboard
+    container_name: dashboard_ui
+    ports:
+      - "8501:8501"
+    depends_on:
+      - fraud_api
+    environment:
+      - API_URL=https://fraud_api:8000

@@ -6,7 +6,7 @@ app = FastAPI(title="API Détection Fraude (PFE)")
 
 # Connexion à Redis (assure-toi que le conteneur tourne !)
 try:
-    r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    r = redis.Redis(host='redis_cache', port=6379, db=0, decode_responses=True)
 except Exception as e:
     print(f":x: Erreur de connexion Redis : {e}")
 
