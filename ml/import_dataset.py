@@ -8,9 +8,8 @@ EXPECTED_FILES = ["fraudTrain.csv", "fraudTest.csv"]
 
 
 def already_downloaded():
-    return all(
-        os.path.isfile(os.path.join(DEST_DIR, f)) for f in EXPECTED_FILES
-    )
+    return all(os.path.isfile(os.path.join(DEST_DIR, f)) for f in EXPECTED_FILES)
+
 
 def main():
     os.makedirs(DEST_DIR, exist_ok=True)
@@ -26,6 +25,7 @@ def main():
         dest = os.path.join(DEST_DIR, os.path.basename(csv_file))
         shutil.copy2(csv_file, dest)
     print("Dataset prêt dans", DEST_DIR)
+
 
 if __name__ == "__main__":
     main()
