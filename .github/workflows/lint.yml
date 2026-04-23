@@ -2,12 +2,11 @@
 
 on:
   push:
-    branches:
-      - main
-      - feat/**
+    branches: 
+      - "**"
   pull_request:
     branches:
-      - main
+      - "**"
 
 jobs:
   ruff:
