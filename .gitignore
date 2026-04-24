@@ -3,3 +3,5 @@ venv/
 TO_DO.md
 __pycache__
 .env
+test*
+mlflow/

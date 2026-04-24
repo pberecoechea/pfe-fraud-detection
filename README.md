@@ -20,11 +20,12 @@
     3. [Installation des dépendences](#installation-des-dépendences)
         1. [*Sur un environnement Linux*](#sur-un-environnement-linux-1)
         2. [*Sur un environnement Windows*](#sur-un-environnement-windows-1)
-5. [**Exécution**](#exécution)
+5. [**Configuration de MLflow (Garage)**](#configuration-de-mlflow-garage)
+6. [**Exécution**](#exécution)
     1. [Exécution dans un environnement virtuel](#exécution-dans-un-environnement-virtuel)
         1. [*Sur un environnement Linux*](#sur-un-environnement-linux-2)
         2. [*Sur un environnement Windows*](#sur-un-environnement-windows-2)
-6. [**Résultats**](#résultats)
+7. [**Résultats**](#résultats)
 
 
 ## Objectif du projet
@@ -113,6 +114,69 @@ venv/bin/pip install -r requirements.txt
 ```shell
 venv/Scripts/pip install -r requirements.txt
 ```
+
+## Configuration de MLflow (Garage)
+
+MLflow utilise **Garage** (stockage objet compatible S3, auto-hébergé) pour persister les artefacts des expériences.
+Le service MLflow ne peut démarrer qu'après avoir initialisé Garage. Suivre les étapes ci-dessous **une seule fois** après le premier `docker compose up`.
+
+> [!IMPORTANT]  
+> Les étapes 1 à 6 ne sont à effectuer qu'à la première installation. Une fois les clés générées et renseignées dans le `docker-compose.yml`, un simple `docker compose up -d` suffit.
+
+**1. Démarrer uniquement le service Garage :**
+
+```bash
+docker compose up -d garage
+```
+
+**2. Vérifier que le service fonctionne et mémoriser l'ID du nœud :**
+
+```bash
+docker exec -it garage /garage status
+```
+
+**3. Assigner un layout au nœud (adapter `<node_id>` avec l'ID récupéré) :**
+
+```bash
+docker exec -it garage /garage layout assign -z dc1 -c 1G <node_id>
+docker exec -it garage /garage layout apply --version 1
+```
+
+**4. Créer le bucket de stockage :**
+
+```bash
+docker exec -it garage /garage bucket create mlflow-bucket
+docker exec -it garage /garage bucket info mlflow-bucket
+```
+
+**5. Créer une clé d'accès et lui donner les permissions sur le bucket :**
+
+```bash
+docker exec -it garage /garage key create mlflow-key
+docker exec -it garage /garage bucket allow --read --write --owner mlflow-bucket --key mlflow-key
+```
+
+Mémoriser les valeurs **Key ID** et **Secret key** affichées.
+
+**6. Renseigner les clés dans `docker-compose.yml` :**
+
+Remplacer les deux valeurs `CHANGEME` du service `mlflow` par les valeurs obtenues à l'étape précédente :
+
+```yaml
+environment:
+  - AWS_ACCESS_KEY_ID=<Key ID>
+  - AWS_SECRET_ACCESS_KEY=<Secret key>
+```
+
+**7. Démarrer tous les services :**
+
+```bash
+docker compose up -d
+```
+
+L'interface MLflow est accessible à l'adresse : **http://localhost:5000**
+
+---
 
 ## Exécution
 

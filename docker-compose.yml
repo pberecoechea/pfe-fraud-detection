@@ -1,4 +1,4 @@
-services:
+﻿services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: redpanda
@@ -77,6 +77,39 @@ services:
     depends_on:
       - redis_cache
 
+  garage:
+    image: dxflrs/garage:v1.0.1
+    container_name: garage
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    ports:
+      - "3900:3900"   # S3 API
+      - "3903:3903"   # Admin API
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.21.3
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow:/mlflow
+    environment:
+      - MLFLOW_S3_ENDPOINT_URL=http://garage:3900
+      - AWS_ACCESS_KEY_ID=GKf914f6d2aad42a977ba0b868
+      - AWS_SECRET_ACCESS_KEY=f19ee4ba8d0749d7c49b1ae390896bd5e2176091117d75dbece4e2b63d1b615a
+    command: >
+      sh -c "pip install boto3 -q && mlflow server
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root s3://mlflow-bucket
+      --host 0.0.0.0
+      --port 5000"
+    depends_on:
+      - garage
+    restart: unless-stopped
+
   dashboard:
     build: 
       context: ./web
@@ -87,3 +120,7 @@ services:
       - fraud_api
     environment:
       - API_URL=https://fraud_api:8000
+
+volumes:
+  garage_meta:
+  garage_data:
