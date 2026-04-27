@@ -15,14 +15,19 @@ except Exception as e:
 def read_root():
     return {"message": "Bienvenue sur l'API de Détection de Fraude", "status": "Online"}
 
+<<<<<<< HEAD:api/main.py
 
 @app.get("/client/{client_id}")
 def get_client_features(client_id: str):
+=======
+@app.get("/transaction/{trans_num}")
+def get_client_features(trans_num: str):
+>>>>>>> f748aa9 (Fix bug BDD non alimentée):src/api/main.py
     """
     Récupère les caractéristiques (Features) d'un client depuis le Feature Store (Redis)
     """
     # On cherche la clé dans Redis (ex: client:C0001)
-    key = f"client:{client_id}"
+    key = f"trans_num:{trans_num}"
     data = r.get(key)
 
     if not data:
@@ -34,7 +39,7 @@ def get_client_features(client_id: str):
     features = json.loads(data)
 
     return {
-        "client_id": client_id,
+        "trans_num": trans_num,
         "features": features,
         "recommendation": "Calcul de probabilité en Semaine 3...",
     }

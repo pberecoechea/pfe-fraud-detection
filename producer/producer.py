@@ -12,9 +12,9 @@ import time
 import os
 
 # Paramètres
-TOPIC_NAME = "transactions"
-KAFKA_SERVER = "redpanda:29092"
-CSV_PATH = os.path.join(os.path.dirname(__file__), "../../data/ccfraud_dataset1.csv")
+TOPIC_NAME = 'transactions'
+KAFKA_SERVER = 'redpanda:29092'
+CSV_PATH = os.path.join(os.path.dirname(__file__), '../../data/fraudTest.csv')
 
 # Initialisation
 producer = KafkaProducer(
@@ -24,21 +24,16 @@ producer = KafkaProducer(
 
 
 def stream_csv():
-    client_ids = [f"C{i:04d}" for i in range(1, 1001)]
-
     if not os.path.exists(CSV_PATH):
-        print(f"Erreur : Le fichier CSV est introuvable à l'adresse : {CSV_PATH}")
+        print(f"Erreur : Le fichier CSV est introuvable. Vérifiez que le fichier a bien été téléchargé de KaggleHub et est présent dans le dossier data/ .: {CSV_PATH}")
         return
 
     print(f"Lecture du CSV et envoi vers le topic '{TOPIC_NAME}'")
-
     for chunk in pd.read_csv(CSV_PATH, chunksize=1):
-        record = chunk.to_dict(orient="records")[0]
-        record["client_id"] = random.choice(client_ids)
+        record = chunk.to_dict(orient='records')[0]
+        del record['Unnamed: 0']
         producer.send(TOPIC_NAME, value=record)
-        print(
-            f"Envoyé: Fake_Cli : {record['client_id']} | Step {record['Time']} | Type: {record['Class']} | Montant: {record['Amount']} €"
-        )
+        print(f"Envoyé: Date : {record['trans_date_trans_time']} | CC_Num {record['cc_num']} | Prénom: {record['first']} | Nom: {record['last']} | Montant: {record['amt']} €")
         time.sleep(0.1)
 
 
