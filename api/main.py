@@ -15,14 +15,9 @@ except Exception as e:
 def read_root():
     return {"message": "Bienvenue sur l'API de Détection de Fraude", "status": "Online"}
 
-<<<<<<< HEAD:api/main.py
 
-@app.get("/client/{client_id}")
-def get_client_features(client_id: str):
-=======
 @app.get("/transaction/{trans_num}")
 def get_client_features(trans_num: str):
->>>>>>> f748aa9 (Fix bug BDD non alimentée):src/api/main.py
     """
     Récupère les caractéristiques (Features) d'un client depuis le Feature Store (Redis)
     """
