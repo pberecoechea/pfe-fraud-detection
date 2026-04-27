@@ -14,7 +14,7 @@ import os
 # Paramètres
 TOPIC_NAME = 'transactions'
 KAFKA_SERVER = 'redpanda:29092'
-CSV_PATH = os.path.join(os.path.dirname(__file__), '../../data/fraudTest.csv')
+CSV_PATH = './data/fraudTest.csv'
 
 # Initialisation
 producer = KafkaProducer(
