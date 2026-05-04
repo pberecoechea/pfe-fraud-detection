@@ -14,6 +14,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.preprocessing import OrdinalEncoder
+import optuna
 from xgboost import XGBClassifier
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -23,11 +24,10 @@ TARGET = "is_fraud"
 
 CATEGORICAL_COLS = ["category", "gender"]
 
-FAST_MODE = False
-FAST_N_LEGIT = 200_000
-
 MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 EXPERIMENT = "fraud-detection"
+
+OPTUNA_N_TRIALS = 30
 
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -71,22 +71,9 @@ def load_and_prepare(csv_path: Path):
     return df[FEATURE_COLS].copy(), df[TARGET]
 
 
-def stratified_sample(X: pd.DataFrame, y: pd.Series, n_legit: int, seed: int = 42):
-    fraud_idx = y[y == 1].index
-    legit_idx = (
-        y[y == 0].sample(n=min(n_legit, (y == 0).sum()), random_state=seed).index
-    )
-    idx = fraud_idx.union(legit_idx)
-    return X.loc[idx], y.loc[idx]
-
-
 print("Chargement des données...")
 X_train, y_train = load_and_prepare(TRAIN_CSV)
 X_test, y_test = load_and_prepare(TEST_CSV)
-
-if FAST_MODE:
-    print(f"FAST_MODE — {FAST_N_LEGIT:,} légitimes + toutes les fraudes")
-    X_train, y_train = stratified_sample(X_train, y_train, FAST_N_LEGIT)
 
 n_neg = (y_train == 0).sum()
 n_pos = (y_train == 1).sum()
@@ -121,7 +108,44 @@ xgb_params = {
 mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPERIMENT)
 
-run_name = f"xgb_v1{'_fast' if FAST_MODE else '_full'}"
+print(f"\nRecherche d'hyperparamètres Optuna ({OPTUNA_N_TRIALS} trials)...")
+optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+def objective(trial: optuna.Trial) -> float:
+    params = {
+        "n_estimators":     trial.suggest_int("n_estimators", 200, 800),
+        "max_depth":        trial.suggest_int("max_depth", 3, 10),
+        "learning_rate":    trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+        "subsample":        trial.suggest_float("subsample", 0.6, 1.0),
+        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+        "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
+        "scale_pos_weight": ratio,
+        "tree_method":      "hist",
+        "eval_metric":      "aucpr",
+        "random_state":     42,
+        "n_jobs":           -1,
+    }
+    with mlflow.start_run(run_name=f"optuna_trial_{trial.number}", nested=True):
+        mlflow.log_params(params)
+        clf_trial = XGBClassifier(**params)
+        clf_trial.fit(X_train_enc, y_train)
+        proba = clf_trial.predict_proba(X_test_enc)[:, 1]
+        score = roc_auc_score(y_test, proba)
+        mlflow.log_metric("roc_auc", score)
+    return score
+
+with mlflow.start_run(run_name="optuna_search"):
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=OPTUNA_N_TRIALS, show_progress_bar=True)
+    mlflow.log_params({f"best_{k}": v for k, v in study.best_params.items()})
+    mlflow.log_metric("best_roc_auc", study.best_value)
+    print("\nMeilleurs paramètres trouvés :")
+    for k, v in study.best_params.items():
+        print(f"   {k}: {v}")
+    print(f"Meilleur ROC-AUC : {study.best_value:.4f}")
+xgb_params.update(study.best_params)
+
+run_name = "xgb_v1_full_optuna"
 print(f"\nEntraînement XGBoost (run : {run_name})...")
 
 with mlflow.start_run(run_name=run_name):
@@ -129,7 +153,6 @@ with mlflow.start_run(run_name=run_name):
         {
             **xgb_params,
             **{
-                "fast_mode": FAST_MODE,
                 "train_size": len(X_train),
                 "n_fraud_train": int(n_pos),
                 "imbalance_ratio": round(ratio, 1),
