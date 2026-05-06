@@ -6,6 +6,6 @@ COPY producer/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY producer/ ./producer/
-COPY data/ ./data/
+RUN mkdir -p ./data
 
 CMD ["python", "producer/producer.py"]
