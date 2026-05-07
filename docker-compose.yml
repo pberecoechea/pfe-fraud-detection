@@ -106,25 +106,36 @@
       - "3903:3903"   # Admin API
     restart: unless-stopped
 
+  postgres:
+    image: postgres:17.5
+    container_name: mlflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mlflow
+    volumes:
+      - mlflow_postgres_data:/var/lib/postgresql/data
+
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.21.3
+    image: burakince/mlflow:3.1.4
     container_name: mlflow
     ports:
       - "5000:5000"
-    volumes:
-      - ./mlflow:/mlflow
     environment:
       - MLFLOW_S3_ENDPOINT_URL=http://garage:3900
-      - AWS_ACCESS_KEY_ID=GKf914f6d2aad42a977ba0b868
-      - AWS_SECRET_ACCESS_KEY=f19ee4ba8d0749d7c49b1ae390896bd5e2176091117d75dbece4e2b63d1b615a
+      - AWS_ACCESS_KEY_ID=GKd4e93fe2fb656e13ffc26716
+      - AWS_SECRET_ACCESS_KEY=5408ff15bd8a27b753850a377ec67f064933f44952a4c6d5c62eae3b1250f47f
+      - AWS_DEFAULT_REGION=garage
     command: >
-      sh -c "pip install boto3 -q && mlflow server
-      --backend-store-uri sqlite:///mlflow/mlflow.db
-      --default-artifact-root s3://mlflow-bucket
+      mlflow server
+      --backend-store-uri postgresql://postgres:password@postgres:5432/mlflow
+      --artifacts-destination s3://mlflow-bucket
+      --serve-artifacts
       --host 0.0.0.0
-      --port 5000"
     depends_on:
       - garage
+      - postgres
     restart: unless-stopped
 
   dashboard:
@@ -141,3 +152,4 @@
 volumes:
   garage_meta:
   garage_data:
+  mlflow_postgres_data:
