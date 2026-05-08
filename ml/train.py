@@ -45,6 +45,23 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["distance"] = np.sqrt(
         (df["lat"] - df["merch_lat"]) ** 2 + (df["long"] - df["merch_long"]) ** 2
     )
+    # Velocity features : comportement par carte
+    df = df.sort_values("trans_date_trans_time")
+    df["time_since_last_tx"] = (
+        df.groupby("cc_num")["trans_date_trans_time"]
+        .diff()
+        .dt.total_seconds()
+        .fillna(-1)
+    )
+    df["tx_date"] = df["trans_date_trans_time"].dt.date
+    df["tx_count_day"] = df.groupby(["cc_num", "tx_date"])["amt"].transform("count")
+    df.drop(columns=["tx_date"], inplace=True)
+    df["amt_mean_card"] = df.groupby("cc_num")["amt"].transform("mean")
+    df["amt_std_card"] = df.groupby("cc_num")["amt"].transform("std").fillna(0)
+    df["amt_z_score"] = (df["amt"] - df["amt_mean_card"]) / (
+        df["amt_std_card"] + 1e-9
+    )
+    df["amt_mean_merchant"] = df.groupby("merchant")["amt"].transform("mean")
     return df
 
 
@@ -63,6 +80,11 @@ FEATURE_COLS = [
     "distance",
     "category",
     "gender",
+    "time_since_last_tx",
+    "tx_count_day",
+    "amt_z_score",
+    "amt_std_card",
+    "amt_mean_merchant",
 ]
 
 
@@ -183,7 +205,7 @@ with mlflow.start_run(run_name=run_name):
         }
     )
 
-    clf = XGBClassifier(**xgb_params)
+    clf = XGBClassifier(**xgb_params, early_stopping_rounds=30)
     clf.fit(X_train_enc, y_train, eval_set=[(X_test_enc, y_test)], verbose=50)
 
     proba_test = clf.predict_proba(X_test_enc)[:, 1]
