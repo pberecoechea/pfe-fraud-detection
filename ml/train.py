@@ -112,7 +112,9 @@ mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPERIMENT)
 
 if BEST_PARAMS_FILE.exists():
-    print(f"\nChargement des paramètres depuis {BEST_PARAMS_FILE.name} (supprimez ce fichier pour relancer la recherche)...")
+    print(
+        f"\nChargement des paramètres depuis {BEST_PARAMS_FILE.name} (supprimez ce fichier pour relancer la recherche)..."
+    )
     with open(BEST_PARAMS_FILE) as f:
         best_params = json.load(f)
     for k, v in best_params.items():
@@ -123,23 +125,24 @@ else:
 
     def objective(trial: optuna.Trial) -> float:
         params = {
-            "n_estimators":     trial.suggest_int("n_estimators", 200, 600),
-            "max_depth":        trial.suggest_int("max_depth", 3, 10),
-            "learning_rate":    trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
-            "subsample":        trial.suggest_float("subsample", 0.6, 1.0),
+            "n_estimators": trial.suggest_int("n_estimators", 200, 600),
+            "max_depth": trial.suggest_int("max_depth", 3, 10),
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+            "subsample": trial.suggest_float("subsample", 0.6, 1.0),
             "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
             "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
             "scale_pos_weight": ratio,
-            "tree_method":      "hist",
-            "eval_metric":      "aucpr",
-            "random_state":     42,
-            "n_jobs":           -1,
+            "tree_method": "hist",
+            "eval_metric": "aucpr",
+            "random_state": 42,
+            "n_jobs": -1,
         }
         with mlflow.start_run(run_name=f"optuna_trial_{trial.number}", nested=True):
             mlflow.log_params(params)
             clf_trial = XGBClassifier(**params, early_stopping_rounds=20)
             clf_trial.fit(
-                X_train_enc, y_train,
+                X_train_enc,
+                y_train,
                 eval_set=[(X_test_enc, y_test)],
                 verbose=False,
             )
@@ -243,7 +246,7 @@ with mlflow.start_run(run_name=run_name):
     signature = infer_signature(signature_input, clf.predict_proba(X_train_enc)[:, 1])
     mlflow.xgboost.log_model(
         xgb_model=clf,
-        artifact_path="model",
+        name="model",
         signature=signature,
         registered_model_name="fraud_detection_xgb",
     )
