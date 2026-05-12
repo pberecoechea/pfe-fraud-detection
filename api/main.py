@@ -1,45 +1,118 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 import redis
 import json
 
-app = FastAPI(title="API Détection Fraude (PFE)")
+from api.models.transaction import TransactionInput, PredictionResponse
+from api.services.prediction import prediction_service
 
-# Connexion à Redis (assure-toi que le conteneur tourne !)
-try:
-    r = redis.Redis(host="redis_cache", port=6379, db=0, decode_responses=True)
-except Exception as e:
-    print(f":x: Erreur de connexion Redis : {e}")
 
+# ---------------------------------------------------------------------------
+# Redis
+# ---------------------------------------------------------------------------
+
+def _make_redis() -> redis.Redis | None:
+    try:
+        return redis.Redis(host="redis_cache", port=6379, db=0, decode_responses=True)
+    except Exception as e:
+        print(f"Erreur de connexion Redis : {e}")
+        return None
+
+
+r = _make_redis()
+
+
+# ---------------------------------------------------------------------------
+# Lifespan : chargement du modèle au démarrage
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        prediction_service.load()
+    except Exception as e:
+        print(f"[WARN] Modèle non chargé au démarrage : {e}")
+    yield
+
+
+app = FastAPI(title="API Détection Fraude (PFE)", lifespan=lifespan)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 @app.get("/")
 def read_root():
-    return {"message": "Bienvenue sur l'API de Détection de Fraude", "status": "Online"}
+    return {
+        "message": "Bienvenue sur l'API de Détection de Fraude",
+        "status": "Online",
+        "model_ready": prediction_service.ready,
+    }
+
+
+@app.post("/predict", response_model=PredictionResponse)
+def predict(transaction: TransactionInput):
+    """
+    Prédit si une transaction est frauduleuse.
+
+    Accepte les champs bruts du CSV (mêmes colonnes que fraudTrain/fraudTest).
+    Les features de vélocité sont enrichies depuis Redis si disponibles.
+    """
+    if not prediction_service.ready:
+        raise HTTPException(
+            status_code=503,
+            detail="Le modèle n'est pas encore disponible. Réessayez dans quelques instants.",
+        )
+    try:
+        result = prediction_service.predict(transaction.model_dump(), r)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return PredictionResponse(trans_num=transaction.trans_num, **result)
 
 
 @app.get("/transaction/{trans_num}")
-def get_client_features(trans_num: str):
+def get_transaction(trans_num: str):
     """
-    Récupère les caractéristiques (Features) d'un client depuis le Feature Store (Redis)
+    Récupère une transaction stockée dans Redis par le Spark Processor.
+    Renvoie également la prédiction de fraude si le modèle est chargé.
     """
-    # On cherche la clé dans Redis (ex: client:C0001)
-    key = f"trans_num:{trans_num}"
-    data = r.get(key)
+    if r is None:
+        raise HTTPException(status_code=503, detail="Redis non disponible")
 
+    tx_key = f"transaction:{trans_num}"
+    data = r.hgetall(tx_key)
     if not data:
         raise HTTPException(
-            status_code=404, detail="Client non trouvé dans le Feature Store"
+            status_code=404,
+            detail=f"Transaction '{trans_num}' non trouvée dans Redis.",
         )
 
-    # On décode le JSON stocké par Spark
-    features = json.loads(data)
+    response: dict = {"trans_num": trans_num, "data": data}
 
-    return {
-        "trans_num": trans_num,
-        "features": features,
-        "recommendation": "Calcul de probabilité en Semaine 3...",
-    }
+    # Ajout de la prédiction si le modèle est chargé et les champs suffisants
+    if prediction_service.ready:
+        try:
+            result = prediction_service.predict(data, r)
+            response["prediction"] = result
+        except Exception as e:
+            response["prediction_error"] = str(e)
+
+    return response
 
 
 @app.get("/health")
 def health_check():
-    return {"redis_connected": r.ping()}
+    redis_ok = False
+    try:
+        if r:
+            redis_ok = r.ping()
+    except Exception:
+        pass
+    return {
+        "redis_connected": redis_ok,
+        "model_ready": prediction_service.ready,
+    }
+

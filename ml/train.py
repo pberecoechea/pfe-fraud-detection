@@ -1,5 +1,6 @@
 import json
 import os
+import pickle
 from pathlib import Path
 
 import mlflow
@@ -272,6 +273,12 @@ with mlflow.start_run(run_name=run_name):
         signature=signature,
         registered_model_name="fraud_detection_xgb",
     )
+
+    encoder_path = Path(__file__).resolve().parent / "encoder.pkl"
+    with open(encoder_path, "wb") as f:
+        pickle.dump(encoder, f)
+    mlflow.log_artifact(str(encoder_path), artifact_path="encoder")
+    print(f"Encoder sauvegardé → {encoder_path.name}")
 
     mlflow.set_tags(
         {
