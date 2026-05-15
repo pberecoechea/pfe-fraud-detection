@@ -43,7 +43,7 @@ if not stats or stats.get("total", 0) == 0:
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Total transactions", stats.get("total", 0))
 c2.metric("Taux fraude (label)", f"{stats.get('fraud_rate_label', 0):.2f}%")
-c3.metric("Taux fraude (modèle)", f"{stats.get('fraud_rate_predicted', 0):.2f}%")
+c3.metric("Taux fraude (labels)", f"{stats.get('fraud_rate_label', 0):.2f}%")
 c4.metric("Montant moyen", f"{stats.get('avg_amount', 0):.2f} €")
 
 st.divider()

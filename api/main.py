@@ -166,7 +166,6 @@ def get_stats():
 
     total = len(trans_nums)
     total_fraud_label = 0   # is_fraud du dataset (ground truth)
-    total_fraud_pred = 0    # prédiction du modèle
     total_amt = 0.0
     merchants: dict = {}
     categories: dict = {}
@@ -190,21 +189,12 @@ def get_stats():
         category = data.get("category", "inconnu")
         categories[category] = categories.get(category, 0) + 1
 
-        if prediction_service.ready:
-            try:
-                pred = prediction_service.predict(data, r)
-                if pred["is_fraud"]:
-                    total_fraud_pred += 1
-            except Exception:
-                pass
-
     top_merchants = sorted(merchants.items(), key=lambda x: x[1], reverse=True)[:10]
     top_categories = sorted(categories.items(), key=lambda x: x[1], reverse=True)
 
     return {
         "total": total,
         "fraud_rate_label": round(total_fraud_label / total * 100, 2) if total else 0,
-        "fraud_rate_predicted": round(total_fraud_pred / total * 100, 2) if total else 0,
         "avg_amount": round(total_amt / total, 2) if total else 0,
         "total_amount": round(total_amt, 2),
         "top_merchants": [{"merchant": m, "count": c} for m, c in top_merchants],

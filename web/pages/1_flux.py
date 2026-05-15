@@ -8,9 +8,9 @@ API = "http://fraud_api:8000"
 REFRESH_INTERVAL = 5  # secondes
 
 
-def fetch_transactions(limit: int = 50) -> list[dict]:
+def fetch_transactions(limit: int = 20) -> list[dict]:
     try:
-        resp = requests.get(f"{API}/transactions", params={"limit": limit}, timeout=5)
+        resp = requests.get(f"{API}/transactions", params={"limit": limit}, timeout=15)
         resp.raise_for_status()
         return resp.json().get("transactions", [])
     except Exception as e:
@@ -22,7 +22,7 @@ st.title("⚡ Flux de transactions en temps réel")
 
 col_left, col_right = st.columns([2, 1])
 with col_left:
-    limit = st.slider("Nombre de transactions à afficher", 10, 200, 50, step=10)
+    limit = st.slider("Nombre de transactions à afficher", 10, 100, 20, step=10)
 with col_right:
     refresh = st.slider("Rafraîchissement (secondes)", 2, 30, REFRESH_INTERVAL)
 

@@ -1,3 +1,3 @@
 import streamlit as st
 
-st.page(page_title="Système de détection de Fraude")
+st.set_page_config(page_title="Système de détection de Fraude")

@@ -29,15 +29,20 @@ def stream_csv():
         )
         return
 
-    print(f"Lecture du CSV et envoi vers le topic '{TOPIC_NAME}'")
-    for chunk in pd.read_csv(CSV_PATH, chunksize=1):
-        record = chunk.to_dict(orient="records")[0]
-        del record["Unnamed: 0"]
-        producer.send(TOPIC_NAME, value=record)
-        print(
-            f"Envoyé: Date : {record['trans_date_trans_time']} | CC_Num {record['cc_num']} | Prénom: {record['first']} | Nom: {record['last']} | Montant: {record['amt']} €"
-        )
-        time.sleep(0.1)
+    iteration = 0
+    while True:
+        iteration += 1
+        print(f"Lecture du CSV et envoi vers le topic '{TOPIC_NAME}' (itération {iteration})")
+        for chunk in pd.read_csv(CSV_PATH, chunksize=1):
+            record = chunk.to_dict(orient="records")[0]
+            del record["Unnamed: 0"]
+            producer.send(TOPIC_NAME, value=record)
+            print(
+                f"Envoyé: Date : {record['trans_date_trans_time']} | CC_Num {record['cc_num']} | Prénom: {record['first']} | Nom: {record['last']} | Montant: {record['amt']} €"
+            )
+            time.sleep(1.0)
+        print(f"Fin de l'itération {iteration}, reprise depuis le début...")
+        time.sleep(2)
 
 
 if __name__ == "__main__":

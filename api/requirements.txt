@@ -1,7 +1,7 @@
 redis==7.4.0
 uvicorn==0.42.0
 fastapi==0.135.3
-mlflow==3.1.1
+mlflow-skinny==3.1.1
 xgboost==2.1.4
 scikit-learn==1.6.1
 numpy==2.2.5
