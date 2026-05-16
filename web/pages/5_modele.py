@@ -16,9 +16,9 @@ def fetch_model_info() -> dict:
         return {}
 
 
-st.title("🤖 Performances du modèle")
+st.title("Performances du modèle")
 
-if st.button("🔄 Rafraîchir"):
+if st.button("Rafraîchir"):
     st.cache_data.clear()
 
 info = fetch_model_info()

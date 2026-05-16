@@ -47,22 +47,46 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         (df["lat"] - df["merch_lat"]) ** 2 + (df["long"] - df["merch_long"]) ** 2
     )
     # Velocity features : comportement par carte
-    df = df.sort_values("trans_date_trans_time")
+    # On trie par date pour que les calculs expanding() soient causaux
+    df = df.sort_values("trans_date_trans_time").reset_index(drop=True)
+
+    # Temps depuis la dernière transaction (diff() est déjà causal)
     df["time_since_last_tx"] = (
         df.groupby("cc_num")["trans_date_trans_time"]
         .diff()
         .dt.total_seconds()
         .fillna(-1)
     )
+
+    # Nombre de transactions du jour : on compte les transactions PRÉCÉDENTES
+    # du même jour (shift(1) exclut la courante, fillna(1) = première du jour)
     df["tx_date"] = df["trans_date_trans_time"].dt.date
-    df["tx_count_day"] = df.groupby(["cc_num", "tx_date"])["amt"].transform("count")
-    df.drop(columns=["tx_date"], inplace=True)
-    df["amt_mean_card"] = df.groupby("cc_num")["amt"].transform("mean")
-    df["amt_std_card"] = df.groupby("cc_num")["amt"].transform("std").fillna(0)
-    df["amt_z_score"] = (df["amt"] - df["amt_mean_card"]) / (
-        df["amt_std_card"] + 1e-9
+    df["tx_count_day"] = (
+        df.groupby(["cc_num", "tx_date"]).cumcount() + 1
     )
-    df["amt_mean_merchant"] = df.groupby("merchant")["amt"].transform("mean")
+    df.drop(columns=["tx_date"], inplace=True)
+
+    # Stats de montant par carte : expanding() sur l'historique passé (shift(1))
+    grp_card = df.groupby("cc_num")["amt"]
+    amt_mean_card = (
+        grp_card.expanding().mean().shift(1).reset_index(level=0, drop=True)
+    ).fillna(df["amt"])
+    amt_std_card = (
+        grp_card.expanding().std().shift(1).reset_index(level=0, drop=True)
+    ).fillna(0.0)
+
+    df["amt_std_card"] = amt_std_card
+    df["amt_z_score"] = (df["amt"] - amt_mean_card) / (amt_std_card + 1e-9)
+
+    # Montant moyen par marchand : idem, historique passé uniquement
+    df["amt_mean_merchant"] = (
+        df.groupby("merchant")["amt"]
+        .expanding()
+        .mean()
+        .shift(1)
+        .reset_index(level=0, drop=True)
+    ).fillna(df["amt"])
+
     return df
 
 

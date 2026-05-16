@@ -84,10 +84,6 @@ class PredictionService:
 
         self.ready = True
 
-    # ------------------------------------------------------------------
-    # Feature engineering pour une transaction unique
-    # ------------------------------------------------------------------
-
     def _compute_features(self, row: dict, redis_client=None) -> dict:
         """Calcule les features d'une transaction brute."""
         trans_time = pd.to_datetime(row["trans_date_trans_time"])
@@ -118,7 +114,7 @@ class PredictionService:
             "gender": row["gender"],
         }
 
-        # --- Features de vélocité : depuis Redis si disponibles ---
+        # Features de vélocité : depuis Redis si disponibles
         time_since_last_tx: float = -1.0
         tx_count_day: int = 1
         amt_std_card: float = 0.0

@@ -4,8 +4,6 @@ from pydantic import BaseModel
 
 
 class TransactionInput(BaseModel):
-    """Champs bruts d'une transaction (identiques au CSV source)."""
-
     trans_date_trans_time: str
     cc_num: str
     merchant: str

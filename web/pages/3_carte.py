@@ -17,9 +17,9 @@ def fetch_transactions(limit: int = 500) -> list[dict]:
         return []
 
 
-st.title("🗺️ Carte géographique")
+st.title("Carte géographique")
 
-if st.button("🔄 Rafraîchir"):
+if st.button("Rafraîchir"):
     st.cache_data.clear()
 
 transactions = fetch_transactions(500)

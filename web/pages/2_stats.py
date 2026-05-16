@@ -28,9 +28,9 @@ def fetch_transactions(limit: int = 500) -> list[dict]:
         return []
 
 
-st.title("📊 Statistiques globales")
+st.title("Statistiques globales")
 
-if st.button("🔄 Rafraîchir"):
+if st.button("Rafraîchir"):
     st.cache_data.clear()
 
 stats = fetch_stats()

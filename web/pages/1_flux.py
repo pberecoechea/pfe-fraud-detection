@@ -18,7 +18,7 @@ def fetch_transactions(limit: int = 20) -> list[dict]:
         return []
 
 
-st.title("⚡ Flux de transactions en temps réel")
+st.title("Flux de transactions en temps réel")
 
 col_left, col_right = st.columns([2, 1])
 with col_left:

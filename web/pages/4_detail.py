@@ -16,7 +16,7 @@ def fetch_transaction(trans_num: str) -> dict | None:
         return None
 
 
-st.title("🔎 Détail d'une transaction")
+st.title("Détail d'une transaction")
 
 trans_num = st.text_input(
     "Numéro de transaction (trans_num)",
@@ -43,9 +43,9 @@ if prediction:
     threshold = prediction.get("threshold", 0.5)
 
     if is_fraud:
-        st.error(f"🚨 FRAUDE DÉTECTÉE — Probabilité : **{proba:.2%}** (seuil : {threshold:.2%})")
+        st.error(f"FRAUDE DÉTECTÉE — Probabilité : **{proba:.2%}** (seuil : {threshold:.2%})")
     else:
-        st.success(f"✅ Transaction légitime — Probabilité de fraude : **{proba:.2%}** (seuil : {threshold:.2%})")
+        st.success(f"Transaction légitime — Probabilité de fraude : **{proba:.2%}** (seuil : {threshold:.2%})")
 
     st.progress(proba, text=f"Score de fraude : {proba:.4f}")
 else:
@@ -57,22 +57,22 @@ st.divider()
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("💳 Transaction")
+    st.subheader("Transaction")
     st.write(f"**Numéro :** {trans_num}")
     st.write(f"**Date :** {data.get('trans_date_trans_time', '—')}")
     st.write(f"**Montant :** {data.get('amt', '—')} €")
     st.write(f"**Marchand :** {data.get('merchant', '—')}")
     st.write(f"**Catégorie :** {data.get('category', '—')}")
-    st.write(f"**Label réel :** {'🔴 Fraude' if str(data.get('is_fraud', '0')) == '1' else '🟢 Légitime'}")
+    st.write(f"**Label réel :** {'Fraude' if str(data.get('is_fraud', '0')) == '1' else 'Légitime'}")
 
 with col2:
-    st.subheader("👤 Titulaire")
+    st.subheader("Titulaire")
     st.write(f"**Numéro carte :** {data.get('cc_num', '—')}")
     st.write(f"**Genre :** {data.get('gender', '—')}")
     st.write(f"**Date naissance :** {data.get('dob', '—')}")
     st.write(f"**Population ville :** {data.get('city_pop', '—')}")
 
-st.subheader("📍 Localisation")
+st.subheader("Localisation")
 col3, col4 = st.columns(2)
 with col3:
     st.write(f"**Client lat/lon :** {data.get('lat', '—')} / {data.get('long', '—')}")

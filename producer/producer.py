@@ -40,7 +40,7 @@ def stream_csv():
             print(
                 f"Envoyé: Date : {record['trans_date_trans_time']} | CC_Num {record['cc_num']} | Prénom: {record['first']} | Nom: {record['last']} | Montant: {record['amt']} €"
             )
-            time.sleep(1.0)
+            time.sleep(0.3)
         print(f"Fin de l'itération {iteration}, reprise depuis le début...")
         time.sleep(2)
 
