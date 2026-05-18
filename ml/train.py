@@ -85,6 +85,17 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index(level=0, drop=True)
     ).fillna(df["amt"])
 
+    # Z-score du montant par rapport à la moyenne historique de la catégorie
+    # Une transaction de 800€ en "fast food" est bien plus suspecte qu'en "shopping"
+    grp_cat = df.groupby("category")["amt"]
+    amt_mean_cat = (
+        grp_cat.expanding().mean().shift(1).reset_index(level=0, drop=True)
+    ).fillna(df["amt"])
+    amt_std_cat = (
+        grp_cat.expanding().std().shift(1).reset_index(level=0, drop=True)
+    ).fillna(0.0)
+    df["amt_z_score_category"] = (df["amt"] - amt_mean_cat) / (amt_std_cat + 1e-9)
+
     return df
 
 
@@ -108,6 +119,7 @@ FEATURE_COLS = [
     "amt_z_score",
     "amt_std_card",
     "amt_mean_merchant",
+    "amt_z_score_category",
 ]
 
 
@@ -213,7 +225,8 @@ else:
 
 xgb_params.update(best_params)
 
-run_name = "xgb_v1_full_optuna"
+run_name = "xgb_v3_final"
+COST_FN = 5  # une fraude non détectée vaut 5× une fausse alarme
 print(f"\nEntraînement XGBoost (run : {run_name})...")
 
 with mlflow.start_run(run_name=run_name):
@@ -234,52 +247,44 @@ with mlflow.start_run(run_name=run_name):
     proba_test = clf.predict_proba(X_test_enc)[:, 1]
 
     precisions, recalls, thresholds = precision_recall_curve(y_test, proba_test)
-    f1_scores = 2 * precisions * recalls / (precisions + recalls + 1e-9)
-    best_idx = f1_scores.argmax()
-    best_threshold = float(thresholds[best_idx])
-
-    y_pred_default = (proba_test >= 0.5).astype(int)
-    y_pred_tuned = (proba_test >= best_threshold).astype(int)
-
     roc_auc = roc_auc_score(y_test, proba_test)
+    n_pos_test = int(y_test.sum())
+    tp_counts = n_pos_test * recalls[:-1]
+    fp_counts = tp_counts * (1.0 / (precisions[:-1] + 1e-9) - 1.0)
+    fn_counts = n_pos_test * (1.0 - recalls[:-1])
+
+    mlflow.log_metric("roc_auc", roc_auc)
+    print(f"\nROC-AUC : {roc_auc:.4f}")
+
+    # Seuil optimal selon la fonction de coût (COST_FN=5)
+    costs_5 = COST_FN * fn_counts + fp_counts
+    idx_5 = int(np.argmin(costs_5))
+    threshold_5 = float(thresholds[idx_5])
+    y_pred_default = (proba_test >= 0.5).astype(int)
+    y_pred_tuned = (proba_test >= threshold_5).astype(int)
     f1_tuned = f1_score(y_test, y_pred_tuned)
 
-    mlflow.log_metrics(
-        {
-            "roc_auc": roc_auc,
-            "f1_tuned": f1_tuned,
-            "precision_tuned": float(precisions[best_idx]),
-            "recall_tuned": float(recalls[best_idx]),
-            "threshold": best_threshold,
-            "f1_default": f1_score(y_test, y_pred_default),
-        }
-    )
-
-    print(
-        f"\nSeuil optimal : {best_threshold:.4f}  —  P={precisions[best_idx]:.4f}  R={recalls[best_idx]:.4f}  F1={f1_tuned:.4f}"
-    )
+    mlflow.log_metrics({
+        "f1_tuned": f1_tuned,
+        "precision_tuned": float(precisions[idx_5]),
+        "recall_tuned": float(recalls[idx_5]),
+        "threshold_cost5": threshold_5,
+        "f1_default": f1_score(y_test, y_pred_default),
+    })
 
     print("\n" + "=" * 60)
     print("Seuil par défaut (0.50)")
     print("=" * 60)
-    print(
-        classification_report(
-            y_test, y_pred_default, target_names=["Légitimes", "Fraudes"], digits=4
-        )
-    )
+    print(classification_report(y_test, y_pred_default, target_names=["Légitimes", "Fraudes"], digits=4))
     print(confusion_matrix(y_test, y_pred_default))
 
     print("\n" + "=" * 60)
-    print(f"Seuil optimisé ({best_threshold:.4f})")
+    print(f"Seuil coût optimisé COST_FN=5 ({threshold_5:.4f})  ← point opérationnel")
     print("=" * 60)
-    print(
-        classification_report(
-            y_test, y_pred_tuned, target_names=["Légitimes", "Fraudes"], digits=4
-        )
-    )
+    print(classification_report(y_test, y_pred_tuned, target_names=["Légitimes", "Fraudes"], digits=4))
     print(confusion_matrix(y_test, y_pred_tuned))
 
-    print(f"\nROC-AUC : {roc_auc:.4f}  |  F1 fraude : {f1_tuned:.4f}")
+    print(f"\nF1 fraude (COST_FN=5) : {f1_tuned:.4f}")
 
     feat_imp = pd.Series(clf.feature_importances_, index=FEATURE_COLS).sort_values(
         ascending=False
