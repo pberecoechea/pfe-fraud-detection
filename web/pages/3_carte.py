@@ -37,9 +37,12 @@ for col in ["lat", "long", "merch_lat", "merch_long", "amt"]:
 df = df.dropna(subset=["lat", "long"])
 
 if "is_fraud_predicted" in df.columns:
-    df["Fraude"] = df["is_fraud_predicted"].astype(str).isin(
-        ["True", "1", "true"]
-    ).map({True: "Fraude", False: "Légitime"})
+    df["Fraude"] = (
+        df["is_fraud_predicted"]
+        .astype(str)
+        .isin(["True", "1", "true"])
+        .map({True: "Fraude", False: "Légitime"})
+    )
 else:
     df["Fraude"] = "Inconnu"
 
@@ -72,7 +75,11 @@ if show_clients:
         lat="lat",
         lon="long",
         color="Fraude",
-        color_discrete_map={"Fraude": "#e74c3c", "Légitime": "#2ecc71", "Inconnu": "#95a5a6"},
+        color_discrete_map={
+            "Fraude": "#e74c3c",
+            "Légitime": "#2ecc71",
+            "Inconnu": "#95a5a6",
+        },
         hover_data=["trans_num", "amt", "merchant", "category"],
         size_max=12,
         zoom=4,
@@ -90,7 +97,11 @@ if show_merchants and "merch_lat" in df.columns:
             lat="merch_lat",
             lon="merch_long",
             color="Fraude",
-            color_discrete_map={"Fraude": "#e74c3c", "Légitime": "#2ecc71", "Inconnu": "#95a5a6"},
+            color_discrete_map={
+                "Fraude": "#e74c3c",
+                "Légitime": "#2ecc71",
+                "Inconnu": "#95a5a6",
+            },
             hover_data=["trans_num", "merchant", "amt"],
             size_max=12,
             zoom=4,

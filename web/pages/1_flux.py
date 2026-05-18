@@ -39,15 +39,23 @@ while True:
 
             # Colonnes à afficher
             display_cols = [
-                "trans_num", "trans_date_trans_time", "cc_num",
-                "merchant", "category", "amt",
-                "fraud_probability", "is_fraud_predicted", "is_fraud",
+                "trans_num",
+                "trans_date_trans_time",
+                "cc_num",
+                "merchant",
+                "category",
+                "amt",
+                "fraud_probability",
+                "is_fraud_predicted",
+                "is_fraud",
             ]
             display_cols = [c for c in display_cols if c in df.columns]
             df_display = df[display_cols].copy()
 
             if "amt" in df_display.columns:
-                df_display["amt"] = pd.to_numeric(df_display["amt"], errors="coerce").round(2)
+                df_display["amt"] = pd.to_numeric(
+                    df_display["amt"], errors="coerce"
+                ).round(2)
             if "fraud_probability" in df_display.columns:
                 df_display["fraud_probability"] = pd.to_numeric(
                     df_display["fraud_probability"], errors="coerce"
@@ -58,9 +66,14 @@ while True:
                     return ["background-color: #ffcccc"] * len(row)
                 return [""] * len(row)
 
-            n_fraud = df_display["is_fraud_predicted"].astype(str).isin(
-                ["True", "1", "true"]
-            ).sum() if "is_fraud_predicted" in df_display.columns else 0
+            n_fraud = (
+                df_display["is_fraud_predicted"]
+                .astype(str)
+                .isin(["True", "1", "true"])
+                .sum()
+                if "is_fraud_predicted" in df_display.columns
+                else 0
+            )
 
             m1, m2, m3 = st.columns(3)
             m1.metric("Transactions affichées", len(df_display))

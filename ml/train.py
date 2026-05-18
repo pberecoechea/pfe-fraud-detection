@@ -61,9 +61,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     # Nombre de transactions du jour : on compte les transactions PRÉCÉDENTES
     # du même jour (shift(1) exclut la courante, fillna(1) = première du jour)
     df["tx_date"] = df["trans_date_trans_time"].dt.date
-    df["tx_count_day"] = (
-        df.groupby(["cc_num", "tx_date"]).cumcount() + 1
-    )
+    df["tx_count_day"] = df.groupby(["cc_num", "tx_date"]).cumcount() + 1
     df.drop(columns=["tx_date"], inplace=True)
 
     # Stats de montant par carte : expanding() sur l'historique passé (shift(1))

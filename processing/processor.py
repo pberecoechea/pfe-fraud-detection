@@ -13,6 +13,8 @@ from pyspark.sql.types import (
     DoubleType,
     IntegerType,
 )
+import math
+from datetime import datetime, timezone
 import redis
 
 fields = [
@@ -45,10 +47,6 @@ fields = [
 schema = StructType(fields)
 
 
-import math
-from datetime import datetime, timezone
-
-
 def _welford_update(r_conn, stats_key: str, new_value: float) -> tuple:
     """
     Mise à jour incrémentale de la moyenne et de l'écart-type (algorithme de Welford).
@@ -68,12 +66,13 @@ def _welford_update(r_conn, stats_key: str, new_value: float) -> tuple:
 
     std = math.sqrt(M2 / count) if count > 1 else 0.0
 
-    r_conn.hset(stats_key, mapping={"count": count, "amt_mean": mean, "M2": M2, "amt_std": std})
+    r_conn.hset(
+        stats_key, mapping={"count": count, "amt_mean": mean, "M2": M2, "amt_std": std}
+    )
     return mean, std
 
 
 def write_to_redis(df, batch_id):
-
     def process_partition(partition):
         r = redis.Redis(host="redis_cache", port=6379, db=0, decode_responses=True)
 
@@ -106,19 +105,22 @@ def write_to_redis(df, batch_id):
 
             # --- Client ---
             client_key = f"client:{cc_num}"
-            r.hset(client_key, mapping={
-                "first": row_dict["first"],
-                "last": row_dict["last"],
-                "gender": row_dict["gender"],
-                "street": row_dict["street"],
-                "city": row_dict["city"],
-                "state": row_dict["state"],
-                "zip": row_dict["zip"],
-                "lat": row_dict["lat"],
-                "long": row_dict["long"],
-                "job": row_dict["job"],
-                "dob": row_dict["dob"],
-            })
+            r.hset(
+                client_key,
+                mapping={
+                    "first": row_dict["first"],
+                    "last": row_dict["last"],
+                    "gender": row_dict["gender"],
+                    "street": row_dict["street"],
+                    "city": row_dict["city"],
+                    "state": row_dict["state"],
+                    "zip": row_dict["zip"],
+                    "lat": row_dict["lat"],
+                    "long": row_dict["long"],
+                    "job": row_dict["job"],
+                    "dob": row_dict["dob"],
+                },
+            )
 
             # --- Vélocité : temps depuis la dernière transaction ---
             last_tx_key = f"last_tx_time:{cc_num}"
@@ -189,7 +191,7 @@ query_console = (
     transactions_df.writeStream.outputMode("append").format("console").start()
 )
 
-print("🚀 Spark Processor démarré ! En attente de données depuis Kafka...")
+print("Spark Processor démarré ! En attente de données depuis Kafka...")
 
 query_redis.awaitTermination()
 query_console.awaitTermination()

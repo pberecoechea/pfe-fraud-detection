@@ -32,7 +32,9 @@ def stream_csv():
     iteration = 0
     while True:
         iteration += 1
-        print(f"Lecture du CSV et envoi vers le topic '{TOPIC_NAME}' (itération {iteration})")
+        print(
+            f"Lecture du CSV et envoi vers le topic '{TOPIC_NAME}' (itération {iteration})"
+        )
         for chunk in pd.read_csv(CSV_PATH, chunksize=1):
             record = chunk.to_dict(orient="records")[0]
             del record["Unnamed: 0"]

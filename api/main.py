@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 import redis
@@ -14,6 +13,7 @@ from api.services.prediction import prediction_service
 # ---------------------------------------------------------------------------
 # Redis
 # ---------------------------------------------------------------------------
+
 
 def _make_redis() -> redis.Redis | None:
     try:
@@ -30,6 +30,7 @@ r = _make_redis()
 # Lifespan : chargement du modèle au démarrage
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -45,6 +46,7 @@ app = FastAPI(title="API Détection Fraude (PFE)", lifespan=lifespan)
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/")
 def read_root():
@@ -165,7 +167,7 @@ def get_stats():
         return {"total": 0}
 
     total = len(trans_nums)
-    total_fraud_label = 0   # is_fraud du dataset (ground truth)
+    total_fraud_label = 0  # is_fraud du dataset (ground truth)
     total_amt = 0.0
     merchants: dict = {}
     categories: dict = {}
@@ -231,4 +233,3 @@ def model_info():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

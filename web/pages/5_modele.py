@@ -59,21 +59,29 @@ st.divider()
 roc = metrics.get("roc_auc")
 if roc is not None:
     st.subheader("ROC-AUC")
-    fig_gauge = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=roc,
-        domain={"x": [0, 1], "y": [0, 1]},
-        title={"text": "ROC-AUC"},
-        gauge={
-            "axis": {"range": [0.5, 1.0]},
-            "bar": {"color": "#2ecc71" if roc >= 0.9 else "#f39c12" if roc >= 0.8 else "#e74c3c"},
-            "steps": [
-                {"range": [0.5, 0.7], "color": "#fadbd8"},
-                {"range": [0.7, 0.9], "color": "#fdebd0"},
-                {"range": [0.9, 1.0], "color": "#d5f5e3"},
-            ],
-        },
-    ))
+    fig_gauge = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=roc,
+            domain={"x": [0, 1], "y": [0, 1]},
+            title={"text": "ROC-AUC"},
+            gauge={
+                "axis": {"range": [0.5, 1.0]},
+                "bar": {
+                    "color": "#2ecc71"
+                    if roc >= 0.9
+                    else "#f39c12"
+                    if roc >= 0.8
+                    else "#e74c3c"
+                },
+                "steps": [
+                    {"range": [0.5, 0.7], "color": "#fadbd8"},
+                    {"range": [0.7, 0.9], "color": "#fdebd0"},
+                    {"range": [0.9, 1.0], "color": "#d5f5e3"},
+                ],
+            },
+        )
+    )
     fig_gauge.update_layout(height=300)
     st.plotly_chart(fig_gauge, use_container_width=True)
 
@@ -84,9 +92,17 @@ params = info.get("params", {})
 if params:
     st.subheader("Hyperparamètres")
     key_params = {
-        k: v for k, v in params.items()
-        if k in ("n_estimators", "max_depth", "learning_rate",
-                  "subsample", "colsample_bytree", "scale_pos_weight")
+        k: v
+        for k, v in params.items()
+        if k
+        in (
+            "n_estimators",
+            "max_depth",
+            "learning_rate",
+            "subsample",
+            "colsample_bytree",
+            "scale_pos_weight",
+        )
     }
     if key_params:
         cols = st.columns(3)

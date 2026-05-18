@@ -43,9 +43,13 @@ if prediction:
     threshold = prediction.get("threshold", 0.5)
 
     if is_fraud:
-        st.error(f"FRAUDE DÉTECTÉE — Probabilité : **{proba:.2%}** (seuil : {threshold:.2%})")
+        st.error(
+            f"FRAUDE DÉTECTÉE — Probabilité : **{proba:.2%}** (seuil : {threshold:.2%})"
+        )
     else:
-        st.success(f"Transaction légitime — Probabilité de fraude : **{proba:.2%}** (seuil : {threshold:.2%})")
+        st.success(
+            f"Transaction légitime — Probabilité de fraude : **{proba:.2%}** (seuil : {threshold:.2%})"
+        )
 
     st.progress(proba, text=f"Score de fraude : {proba:.4f}")
 else:
@@ -63,7 +67,9 @@ with col1:
     st.write(f"**Montant :** {data.get('amt', '—')} €")
     st.write(f"**Marchand :** {data.get('merchant', '—')}")
     st.write(f"**Catégorie :** {data.get('category', '—')}")
-    st.write(f"**Label réel :** {'Fraude' if str(data.get('is_fraud', '0')) == '1' else 'Légitime'}")
+    st.write(
+        f"**Label réel :** {'Fraude' if str(data.get('is_fraud', '0')) == '1' else 'Légitime'}"
+    )
 
 with col2:
     st.subheader("Titulaire")
@@ -77,7 +83,9 @@ col3, col4 = st.columns(2)
 with col3:
     st.write(f"**Client lat/lon :** {data.get('lat', '—')} / {data.get('long', '—')}")
 with col4:
-    st.write(f"**Marchand lat/lon :** {data.get('merch_lat', '—')} / {data.get('merch_long', '—')}")
+    st.write(
+        f"**Marchand lat/lon :** {data.get('merch_lat', '—')} / {data.get('merch_long', '—')}"
+    )
 
 with st.expander("Données brutes Redis"):
     st.json(data)

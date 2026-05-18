@@ -73,7 +73,9 @@ class PredictionService:
         print(f"Modèle '{MODEL_NAME}' chargé (run_id={run_id})")
 
         tmp_dir = tempfile.mkdtemp()
-        encoder_local = client.download_artifacts(run_id, "encoder/encoder.pkl", tmp_dir)
+        encoder_local = client.download_artifacts(
+            run_id, "encoder/encoder.pkl", tmp_dir
+        )
         with open(encoder_local, "rb") as f:
             self.encoder = pickle.load(f)
         print("Encoder chargé.")
@@ -157,7 +159,6 @@ class PredictionService:
         features["amt_mean_merchant"] = amt_mean_merchant
 
         return features
-
 
     def predict(self, transaction: dict, redis_client=None) -> dict:
         """

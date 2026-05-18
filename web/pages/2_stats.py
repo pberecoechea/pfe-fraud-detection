@@ -1,6 +1,5 @@
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import requests
 import streamlit as st
 
@@ -56,8 +55,12 @@ with col1:
     if merchants:
         df_m = pd.DataFrame(merchants)
         fig = px.bar(
-            df_m, x="count", y="merchant", orientation="h",
-            title="Top 10 marchands", color="count",
+            df_m,
+            x="count",
+            y="merchant",
+            orientation="h",
+            title="Top 10 marchands",
+            color="count",
             color_continuous_scale="Blues",
         )
         fig.update_layout(showlegend=False, yaxis={"categoryorder": "total ascending"})
@@ -69,7 +72,9 @@ with col2:
     if categories:
         df_c = pd.DataFrame(categories)
         fig = px.pie(
-            df_c, values="count", names="category",
+            df_c,
+            values="count",
+            names="category",
             title="Répartition par catégorie",
             color_discrete_sequence=px.colors.qualitative.Pastel,
         )
@@ -91,9 +96,12 @@ if transactions:
 
         color_col = None
         if "is_fraud_predicted" in df.columns:
-            df["Fraude"] = df["is_fraud_predicted"].astype(str).isin(
-                ["True", "1", "true"]
-            ).map({True: "Fraude", False: "Légitime"})
+            df["Fraude"] = (
+                df["is_fraud_predicted"]
+                .astype(str)
+                .isin(["True", "1", "true"])
+                .map({True: "Fraude", False: "Légitime"})
+            )
             color_col = "Fraude"
 
         fig = px.scatter(
