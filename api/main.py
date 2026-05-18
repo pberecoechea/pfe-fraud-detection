@@ -153,6 +153,29 @@ def list_transactions(limit: int = Query(default=50, le=500)):
 
     return {"transactions": results, "total": len(results)}
 
+@app.get("/clients")
+def list_clients(limit: int = Query(default=50, le=500)):
+    """
+    Retourne la liste des clients distincts vus par le Spark Processor.
+    """
+    if r is None:
+        raise HTTPException(status_code=503, detail="Redis non disponible")
+
+    clients_nums = r.zrevrange("client:recent", 0, limit - 1)
+    
+    if not clients_nums:
+        return {"clients": [], "total": 0}
+
+    results = []
+    for clients_num in clients_nums:
+        data = r.hgetall(f"client:{clients_num}")
+        if not data:
+            continue
+        entry = {"client": clients_num, **data}
+        results.append(entry)
+
+    return {"clients": results, "total": len(results)}
+
 
 @app.get("/stats")
 def get_stats():
@@ -201,6 +224,24 @@ def get_stats():
         "total_amount": round(total_amt, 2),
         "top_merchants": [{"merchant": m, "count": c} for m, c in top_merchants],
         "top_categories": [{"category": c, "count": n} for c, n in top_categories],
+    }
+
+
+@app.get("/model/features")
+def model_features():
+    """
+    Retourne les importances des features du modèle chargé.
+    """
+    if not prediction_service.ready:
+        raise HTTPException(status_code=503, detail="Modèle non disponible")
+    from api.services.prediction import FEATURE_COLS
+    importances = prediction_service.model.feature_importances_
+    return {
+        "features": sorted(
+            [{"feature": f, "importance": float(i)} for f, i in zip(FEATURE_COLS, importances)],
+            key=lambda x: x["importance"],
+            reverse=True,
+        )
     }
 
 

@@ -7,4 +7,6 @@ __pycache__/
 test*
 mlruns/
 ml/encoder.pkl
+ml/best_params.json
 mlflow/
+docker-compose.override.yml

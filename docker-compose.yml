@@ -128,8 +128,8 @@
       - "5000:5000"
     environment:
       - MLFLOW_S3_ENDPOINT_URL=http://garage:3900
-      - AWS_ACCESS_KEY_ID=GKd4e93fe2fb656e13ffc26716
-      - AWS_SECRET_ACCESS_KEY=5408ff15bd8a27b753850a377ec67f064933f44952a4c6d5c62eae3b1250f47f
+      - AWS_ACCESS_KEY_ID=GK161beccb33b7fd4ea5d58e93
+      - AWS_SECRET_ACCESS_KEY=53ad343ef1886ea4d5c45ea8acdaa9a34342bc58e319c6dfcf1e724ade26cfbe
       - AWS_DEFAULT_REGION=garage
     command: >
       mlflow server
@@ -143,7 +143,7 @@
     restart: unless-stopped
 
   dashboard:
-    build: 
+    build:
       context: ./web
     container_name: dashboard_ui
     ports:

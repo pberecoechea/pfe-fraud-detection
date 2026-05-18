@@ -143,10 +143,13 @@ def write_to_redis(df, batch_id):
             merchant_stats_key = f"merchant_stats:{merchant}"
             _welford_update(r, merchant_stats_key, amt)
 
-            # --- Sorted set pour l'API (500 dernières transactions) ---
+            # --- Sorted sets pour l'API ---
             unix_time = float(row_dict.get("unix_time") or 0)
             r.zadd("transactions:recent", {row_dict["trans_num"]: unix_time})
             r.zremrangebyrank("transactions:recent", 0, -501)
+
+            r.zadd("client:recent", {cc_num: unix_time})
+            r.zremrangebyrank("client:recent", 0, -1001)
 
     df.foreachPartition(process_partition)
 
