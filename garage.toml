@@ -1,0 +1,16 @@
+metadata_dir = "/var/lib/garage/meta"
+data_dir     = "/var/lib/garage/data"
+
+replication_factor = 1
+
+rpc_secret      = "196ee845df6d0a7d1eb540fc06ccffe5d8caab9aadb7c4c3aad2c9c2d6e02e6e"
+rpc_bind_addr   = "[::]:3901"
+rpc_public_addr = "garage:3901"
+
+[s3_api]
+s3_region    = "garage"
+api_bind_addr = "[::]:3900"
+root_domain   = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"

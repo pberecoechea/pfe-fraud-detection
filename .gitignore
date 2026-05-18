@@ -1,0 +1,10 @@
+data/
+venv/
+TO_DO.md
+__pycache__/
+*.pyc
+.env
+test*
+mlruns/
+ml/encoder.pkl
+mlflow/

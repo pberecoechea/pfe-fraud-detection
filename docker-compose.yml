@@ -1,7 +1,4 @@
-version: '3.8'
-
-services:
-  # Le Broker (Le cœur du système)
+﻿services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: redpanda
@@ -16,10 +13,9 @@ services:
       - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
       - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
     ports:
-      - "9092:9092"   # Pour ton script Python sur ton PC
-      - "29092:29092" # Pour la communication interne Docker
+      - "9092:9092"   # script python 
+      - "29092:29092" # communication interne Docker
 
-  # L'interface Console (Plus simple, plus de mapping d'erreurs)
   console:
     image: docker.redpanda.com/redpandadata/console:latest
     container_name: redpanda-console
@@ -30,21 +26,134 @@ services:
     depends_on:
       - redpanda
 
-  # Le cache pour plus tard
-  redis:
+  redis_cache:
     image: redis:7.2-alpine
     container_name: redis_cache
     ports:
       - "6379:6379"
 
-  # Ton moteur de calcul
-  spark-master:
-    image: apache/spark-py:latest
-    container_name: spark-master
-    #user: root
-    environment:
-      - SPARK_MODE=master
+  redis_insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
     ports:
-      - "8081:8080"
-      - "7077:7077"
-    command: ["/opt/spark/bin/spark-class","org.apache.spark.deploy.master.Master"]
+      - "8002:8001"
+    environment:
+      - RI_APP_PORT=8001
+    depends_on:
+      - redis_cache
+
+  redis_insight_init:
+    image: curlimages/curl:latest
+    container_name: redis-insight-init
+    depends_on:
+      - redis_insight
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until curl -sf http://redis_insight:8001/api/health; do
+          echo 'Waiting for RedisInsight...'
+          sleep 5
+        done
+        curl -X POST http://redis_insight:8001/api/databases \
+          -H 'Content-Type: application/json' \
+          -d '{"host":"redis_cache","port":6379,"name":"Redis Cache"}'
+    restart: "no"
+
+  machine_learning_model:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    volumes:
+      - ./data:/app/data
+
+  producer:
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
+    depends_on:
+      - redpanda
+      - machine_learning_model
+    volumes:
+      - ./data:/app/data
+
+  spark_processor:
+    build:
+      context: .
+      dockerfile: processing/Dockerfile
+    environment:
+      - KAFKA_BROKERS=redpanda:29092
+    depends_on:
+      - redpanda
+
+  fraud_api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_MODEL_NAME=fraud_detection_xgb
+    depends_on:
+      - redis_cache
+      - mlflow
+
+  garage:
+    image: dxflrs/garage:v1.0.1
+    container_name: garage
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    ports:
+      - "3900:3900"   # S3 API
+      - "3903:3903"   # Admin API
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17.5
+    container_name: mlflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mlflow
+    volumes:
+      - mlflow_postgres_data:/var/lib/postgresql/data
+
+  mlflow:
+    image: burakince/mlflow:3.1.4
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_S3_ENDPOINT_URL=http://garage:3900
+      - AWS_ACCESS_KEY_ID=GKd4e93fe2fb656e13ffc26716
+      - AWS_SECRET_ACCESS_KEY=5408ff15bd8a27b753850a377ec67f064933f44952a4c6d5c62eae3b1250f47f
+      - AWS_DEFAULT_REGION=garage
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://postgres:password@postgres:5432/mlflow
+      --artifacts-destination s3://mlflow-bucket
+      --serve-artifacts
+      --host 0.0.0.0
+    depends_on:
+      - garage
+      - postgres
+    restart: unless-stopped
+
+  dashboard:
+    build: 
+      context: ./web
+    container_name: dashboard_ui
+    ports:
+      - "8501:8501"
+    depends_on:
+      - fraud_api
+    environment:
+      - API_URL=https://fraud_api:8000
+
+volumes:
+  garage_meta:
+  garage_data:
+  mlflow_postgres_data:
