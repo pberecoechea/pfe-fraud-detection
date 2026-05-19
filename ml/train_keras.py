@@ -28,6 +28,21 @@ from tensorflow.keras import layers, callbacks
 
 tf.get_logger().setLevel("ERROR")
 
+
+# ---------------------------------------------------------------------------
+# Focal Loss — conçue pour les datasets déséquilibrés
+# Down-weight les exemples faciles (légitimes bien classés), focus sur les durs
+# alpha : poids de la classe positive | gamma : force de la focalisation
+# ---------------------------------------------------------------------------
+def focal_loss(alpha: float = 0.85, gamma: float = 2.0):
+    def loss(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0 - 1e-7)
+        pt = y_true * y_pred + (1.0 - y_true) * (1.0 - y_pred)
+        alpha_t = y_true * alpha + (1.0 - y_true) * (1.0 - alpha)
+        return tf.reduce_mean(-alpha_t * tf.pow(1.0 - pt, gamma) * tf.math.log(pt))
+    return loss
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 TRAIN_CSV = DATA_DIR / "fraudTrain.csv"
 TEST_CSV = DATA_DIR / "fraudTest.csv"
@@ -170,18 +185,19 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train_enc).astype(np.float32)
 X_test_scaled = scaler.transform(X_test_enc).astype(np.float32)
 
-# Poids de classe pour compenser le déséquilibre (équivalent à scale_pos_weight)
-class_weight = {0: 1.0, 1: float(ratio)}
+# Poids de classe réduit : la Focal Loss gère déjà l'imbalance,
+# on ajoute juste un biais léger avec sqrt(ratio) ≈ 13
+class_weight = {0: 1.0, 1: float(np.sqrt(ratio))}
 
 mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPERIMENT)
 
-print("\nEntraînement MLP Keras...")
-with mlflow.start_run(run_name="keras_mlp"):
+print("\nEntraînement MLP Keras (v2 — Focal Loss + LR scheduling)...")
+with mlflow.start_run(run_name="keras_mlp_v2"):
     model = build_model(X_train_scaled.shape[1])
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=1e-3),
-        loss="binary_crossentropy",
+        loss=focal_loss(alpha=0.85, gamma=2.0),
         metrics=[
             keras.metrics.AUC(curve="PR", name="auc_pr"),
             keras.metrics.AUC(curve="ROC", name="auc_roc"),
@@ -191,16 +207,19 @@ with mlflow.start_run(run_name="keras_mlp"):
     model.summary()
 
     early_stop = callbacks.EarlyStopping(
-        monitor="val_auc_pr", patience=5, restore_best_weights=True, mode="max"
+        monitor="val_auc_pr", patience=10, restore_best_weights=True, mode="max"
+    )
+    reduce_lr = callbacks.ReduceLROnPlateau(
+        monitor="val_auc_pr", factor=0.5, patience=3, mode="max", min_lr=1e-6, verbose=1
     )
 
     history = model.fit(
         X_train_scaled, y_train.values,
         validation_data=(X_test_scaled, y_test.values),
-        epochs=50,
+        epochs=100,
         batch_size=4096,
         class_weight=class_weight,
-        callbacks=[early_stop],
+        callbacks=[early_stop, reduce_lr],
         verbose=1,
     )
 
@@ -231,7 +250,8 @@ with mlflow.start_run(run_name="keras_mlp"):
         "dropout": "0.3-0.3-0.2",
         "batch_size": 4096,
         "optimizer": "Adam lr=1e-3",
-        "class_weight_fraud": round(ratio, 1),
+        "loss": "focal_loss(alpha=0.85, gamma=2.0)",
+        "class_weight_fraud": round(np.sqrt(ratio), 1),
         "cost_fn": COST_FN,
         "n_features": len(FEATURE_COLS),
     })
