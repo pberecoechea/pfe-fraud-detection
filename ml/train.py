@@ -96,6 +96,18 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     ).fillna(0.0)
     df["amt_z_score_category"] = (df["amt"] - amt_mean_cat) / (amt_std_cat + 1e-9)
 
+    # Nombre de transactions dans l'heure courante pour cette carte
+    # Détecte les rafales rapides (ex : 5 transactions en 10 minutes)
+    df["tx_hour_key"] = df["trans_date_trans_time"].dt.floor("h")
+    df["tx_count_hour"] = df.groupby(["cc_num", "tx_hour_key"]).cumcount()
+    df.drop(columns=["tx_hour_key"], inplace=True)
+
+    # Marchand inconnu pour cette carte : 1 si c'est la première fois que la carte
+    # visite ce marchand, 0 sinon (signal fort en fraude réelle)
+    df["merchant_novelty"] = (
+        df.groupby(["cc_num", "merchant"]).cumcount() == 0
+    ).astype(int)
+
     return df
 
 
@@ -120,6 +132,8 @@ FEATURE_COLS = [
     "amt_std_card",
     "amt_mean_merchant",
     "amt_z_score_category",
+    "tx_count_hour",
+    "merchant_novelty",
 ]
 
 
